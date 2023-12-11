@@ -1,4 +1,8 @@
 '''
+    Computer Seminar I, Homework Chapter 2
+    Maximilian Fernaldy
+    C2TB1702
+    
     README
 
     This file has to be ran from the parent directory of week2, which
@@ -29,12 +33,9 @@ clock = pygame.time.Clock()
 image = pygame.image.load("assets/player/p1_walk01.png")
 
 # Text
-mainfont = pygame.font.Font("assets/fonts/Pixeltype.ttf", 50)
-text_surf = mainfont.render("hello, pygame", True, pygame.Color("Green"))
+mainfont = pygame.font.Font(None, 50)
+text_surf = mainfont.render("hello, pygame", True, pygame.Color("Yellow"))
 text_rect = text_surf.get_rect()
-
-# Make a new rectangle for ellipse, which is an inflated version of text_rect
-ellipse_rect = pygame.Rect.inflate(text_rect, 45, 15)
 
 while True:
     # Handle exit when escape is pressed
@@ -63,17 +64,8 @@ while True:
     ## Show character sprite
     screen.blit(image, mousepos)
 
-    ## Display crosshair
-    pygame.draw.line(screen, "Blue", (mousepos[0], 0), (mousepos[0], HEIGHT), width=3)
-    pygame.draw.line(screen, "Blue", (0, mousepos[1]), (WIDTH, mousepos[1]), width=3)
-
-    ## Ellipse
-    ### Update ellipse position
-    ellipse_rect.center = text_rect.center
-    pygame.draw.ellipse(screen, "Red", ellipse_rect, width=2)
-    ### Show text last so it's in front of the ellipse
+    ## Show text
     screen.blit(text_surf, text_rect)
-
 
     # Screen update
     pygame.display.update()

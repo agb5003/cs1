@@ -1,4 +1,8 @@
 '''
+    Computer Seminar I, Homework Chapter 2
+    Maximilian Fernaldy
+    C2TB1702
+    
     README
 
     This file has to be ran from the parent directory of week2, which
@@ -27,6 +31,7 @@ clock = pygame.time.Clock()
 
 # Image
 image = pygame.image.load("assets/player/p1_walk01.png")
+image_rect = image.get_rect()
 
 # Text
 mainfont = pygame.font.Font("assets/fonts/Pixeltype.ttf", 50)
@@ -41,18 +46,18 @@ while True:
     pygame.event.clear()  # Without an event loop, the events need to be cleared
     key_pressed = pygame.key.get_pressed()  # Get a list of the state of keys
     if key_pressed[pygame.K_ESCAPE]:  
-    # pygame.K_ESCAPE is a predefined integer value corresponding to the index of the state
-    # of the Escape key in the key_pressed list.
+        # pygame.K_ESCAPE is a predefined integer value corresponding to the index of the state
+        # of the Escape key in the key_pressed list.
         break
 
     # Get mouse position
     mousepos = pygame.mouse.get_pos()
-
-
-    # Position text in relation to mouse position using a rectangle
-    # mousepos[] is a tuple of x and y coordinates, mousepos[0] corresponding to x and
-    # mousepos [1] to the y coordinate. By adding an offset of 100 pixels to the 
-    text_rect.topleft = (mousepos[0] + int(text_rect.width / 2), mousepos[1])
+    ## Update character position
+    image_rect.topleft = mousepos
+    ## Update ellipse position
+    ellipse_rect.midtop = (image_rect.topright[0] + int(ellipse_rect.width/2), image_rect.topright[1])
+    ## Update text position
+    text_rect.center = ellipse_rect.center
     
     # Fill background
     screen.fill(pygame.Color("Black"))
@@ -60,18 +65,18 @@ while True:
 
     # Show display elements
 
-    ## Show character sprite
-    screen.blit(image, mousepos)
-
     ## Display crosshair
     pygame.draw.line(screen, "Blue", (mousepos[0], 0), (mousepos[0], HEIGHT), width=3)
     pygame.draw.line(screen, "Blue", (0, mousepos[1]), (WIDTH, mousepos[1]), width=3)
 
+    ## Show character sprite
+    ### Show character AFTER crosshair so it's drawn over the lines
+    screen.blit(image, image_rect)
+
     ## Ellipse
-    ### Update ellipse position
-    ellipse_rect.center = text_rect.center
-    pygame.draw.ellipse(screen, "Red", ellipse_rect, width=2)
-    ### Show text last so it's in front of the ellipse
+    pygame.draw.ellipse(screen, "Red", ellipse_rect, width=4)
+
+    ## Show text last so it's in front of the ellipse
     screen.blit(text_surf, text_rect)
 
 
