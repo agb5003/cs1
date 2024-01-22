@@ -36,3 +36,12 @@ class Particle:
     @property
     def y(self):
         return self.pos.y
+    
+# Inheritance
+class ConfinedParticle(Particle):
+    def update_after_move(self):
+        e = 0.9
+        if self.pos.x - self.radius < 0 or self.pos.x + self.radius > self.world.width:
+            self.vel.x *= -e
+        if self.pos.y + self.radius > self.world.height:
+            self.vel.y *= -e
