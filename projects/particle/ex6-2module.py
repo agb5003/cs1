@@ -30,34 +30,6 @@ class BounceOnBoundaryStrategy:
             # constrain particle on or above the floor
             p.pos.y = height - radius
 
-class BounceLimited:
-    def __init__(self, restitution = 0.95, max_bounces = 4):
-        self.restitution = restitution
-        self.max_bounces = max_bounces
-        self.bounce_count = 0
-    def __call__(self, p):
-        if self.bounce_count < self.max_bounces:
-            # Bounce particle if max bounce has not been reached
-            x, y = p.x, p.y
-            vx, vy = p.vel.x, p.vel.y
-            width, height = p.world.width, p.world.height
-            radius = p.radius
-            e = self.restitution
-            if (x < 0 + radius and vx < 0) or (x > width - radius and vx > 0):
-                p.vel.x *= -e
-                self.bounce_count += 1
-            if y > height - radius and vy > 0:
-                p.vel.y *= -e
-                # constrain particle on or above the floor
-                p.pos.y = height - radius
-                self.bounce_count += 1
-        else:
-            # we can delete the particle from the list to clean up after the max bounce is reached
-            p.is_alive = False
-            '''
-            Important note: this will look like the particle doesn't bounce for the final count, but this is because the particle disappears immediately after the collision with the boundary, which doesn't look like a "bounce" to us. Asynchronous wait or sleep can be used but since I would have to use an external library I will not use them.
-            '''
-
 class BounceRandomize(BounceOnBoundaryStrategy):
     def __init__(self, restitution=0.95):
         self.restitution = restitution

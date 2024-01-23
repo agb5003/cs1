@@ -28,7 +28,7 @@ class AppMain:
             p = particle.Particle(pos, (vx, vy), self.world)
         elif button == 3:
             # p = particle.Particle(pos, (vx, vy), self.world, color="blue", postmove_strategy=particle.BounceOnBoundaryStrategy(restitution=0.5))
-            p = particle.Particle(pos, (vx, vy), self.world, color="blue", postmove_strategy=particle.BounceOnBoundaryStrategy(restitution=0.87))
+            p = particle.Particle(pos, (vx, vy), self.world, color="blue", postmove_strategy=particle.BounceRandomize(restitution=0.87))
         else:
             return
         self.particle_list.append(p)

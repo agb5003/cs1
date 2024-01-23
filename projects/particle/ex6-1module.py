@@ -58,27 +58,6 @@ class BounceLimited:
             Important note: this will look like the particle doesn't bounce for the final count, but this is because the particle disappears immediately after the collision with the boundary, which doesn't look like a "bounce" to us. Asynchronous wait or sleep can be used but since I would have to use an external library I will not use them.
             '''
 
-class BounceRandomize(BounceOnBoundaryStrategy):
-    def __init__(self, restitution=0.95):
-        self.restitution = restitution
-        self.colors = ["pink", "red", "yellow", "orange", "purple"]
-    def __call__(self, p):
-        x, y = p.x, p.y
-        vx, vy = p.vel.x, p.vel.y
-        width, height = p.world.width, p.world.height
-        radius = p.radius
-        e = self.restitution
-        if (x < 0 + radius and vx < 0) or (x > width - radius and vx > 0):
-            p.vel.x *= -e
-            p.color = "pink"
-        if y > height - radius and vy > 0:
-            p.vel.y *= -e
-            # constrain particle on or above the floor
-            p.pos.y = height - radius
-            if int(vy) != 0:
-                # Only change colors if the particle is not already on the floor sliding
-                p.color = self.colors[random.randint(0,len(self.colors)-1)]
-
 class World:
     def __init__(self, width, height, dt, gy):
         self.width = width
