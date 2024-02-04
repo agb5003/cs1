@@ -2,3 +2,5 @@
 /.vscode
 virt3.11.4
 virt3.12
+virt
+*.pyc
