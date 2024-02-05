@@ -1,4 +1,5 @@
 import pygame
+import math
 
 
 PgVector = pygame.math.Vector2
@@ -29,12 +30,36 @@ class LineDrawer:
         pygame.draw.line(screen, self.color, pos1, pos2, self.width)
 
 
+class DottedLineDrawer(LineDrawer):
+    def __call__(self, screen, pos1, pos2):
+        dx = pos2[0] - pos1[0]
+        dy = pos2[1] - pos1[1]
+        dot_radius = 2
+        gap_length = 5
+        distance = math.sqrt(dx**2 + dy**2)
+        dot_count = int(distance / (dot_radius * 2 + gap_length))
+
+        if dot_count == 0:
+            return  # Prevent division by zero
+
+        dx = dx / dot_count
+        dy = dy / dot_count
+
+        for i in range(dot_count + 1):
+            pygame.draw.circle(screen, self.color, (int(pos1[0] + i * dx), int(pos1[1] + i * dy)), dot_radius)
+
+
 def compute_gravity_force(mass, gravity_acc):
     return mass * gravity_acc
 
 
 def compute_viscous_damping_force(viscous_damping, vel):
     return -viscous_damping * vel
+
+
+def compute_harmonic_force(amplitude, frequency):
+    time = pygame.time.get_ticks() // 16
+    return PgVector((amplitude * math.sin(frequency * time)), 0)
 
 
 def integrate_symplectic(pos, vel, force, mass, dt):
@@ -45,7 +70,8 @@ def integrate_symplectic(pos, vel, force, mass, dt):
 
 class PointMass:
     def __init__(self, pos, vel, world, radius=10.0, mass=10.0,
-                 viscous_damping=0.01, restitution=0.95, drawer=None):
+                 viscous_damping=0.01, restitution=0.95, harmonic_force = False, 
+                 amplitude=0, frequency=0, drawer=None):
         self.is_alive = True
         self.world = world
         self.drawer = drawer or CircleDrawer("blue", 1)
@@ -56,6 +82,12 @@ class PointMass:
         self.mass = mass
         self.viscous_damping = viscous_damping
         self.restitution = restitution
+
+        self.harmonic_force = harmonic_force
+
+        if harmonic_force == True:
+            self.amplitude = amplitude
+            self.frequency = frequency
 
         self.total_force = PgVector((0, 0))
         self.message_list = []
@@ -78,7 +110,11 @@ class PointMass:
     def generate_force(self):
         force_g = compute_gravity_force(self.mass, self.world.gravity_acc)
         force_v = compute_viscous_damping_force(self.viscous_damping, self.vel)
-        self.receive_force(force_g + force_v)
+        if self.harmonic_force == True:
+            force_f = compute_harmonic_force(self.amplitude, self.frequency)
+            self.receive_force(force_g + force_v + force_f)
+        else:
+            self.receive_force(force_g + force_v)
 
     def move(self):
         self.pos, self.vel = \
@@ -88,13 +124,14 @@ class PointMass:
             if msg["type"] == "floor_hit" and self.vel.y > 0:
                 # constrain y on or above floor
                 self.pos.y = msg["y"] - self.radius
-
+        
 
 class FixedPointMass(PointMass):
     def __init__(self, pos, vel, world, radius=10.0, mass=10.0,
-                 viscous_damping=0.01, restitution=0.95, drawer=None):
+                 viscous_damping=0.01, restitution=0.95, harmonic_force = False, 
+                 amplitude=0, frequency=0, drawer=None):
         super().__init__(pos, vel, world, radius, mass,
-                         viscous_damping, restitution, drawer)
+                         viscous_damping, restitution, harmonic_force, amplitude, frequency, drawer)
         self.vel, self.mass = PgVector((0, 0)), 1e9
 
     def move(self):
@@ -116,7 +153,7 @@ class Spring:
                  spring_const=0.01, natural_len=0.0, drawer=None):
         self.is_alive = True
         self.world = world
-        self.drawer = drawer or LineDrawer("blue", 1)
+        self.drawer = drawer or DottedLineDrawer("blue", 1, )
 
         self.p1 = point_mass1
         self.p2 = point_mass2
@@ -140,7 +177,7 @@ class Spring:
         self.p2.receive_force(-f1)
 
 
-class FragileSpring(Spring):
+class FragileSpring(Spring): # Inherits from Spring, except it breaks when a certain restoring force threshold is met
     def __init__(self, point_mass1, point_mass2, world,
                  spring_const=0.01, natural_len=0.0, drawer=None,
                  break_threshold=1e9):
@@ -245,8 +282,7 @@ class Boundary:
 
 
     def is_floor(self):
-        return self.normal == PgVector((0, 1))
-
+        return self.normal == PgVector((0,1))
     def generate_force(self):
         plist = [a for a in self.actor_list if self.target_condition(a)]
         for p in plist:
@@ -256,3 +292,81 @@ class Boundary:
             p.receive_force(f)
             if self.is_floor():
                 p.receive_message({"type": "floor_hit", "y": self.point_included.y})
+
+
+def is_point_mass(actor):
+    return isinstance(actor, PointMass)
+
+
+def compute_impact_force_between_points(p1, p2, dt):
+    if (p1.pos - p2.pos).magnitude() > p1.radius + p2.radius:
+        return None
+    if p1.pos == p2.pos:
+        return None
+    normal = (p2.pos - p1.pos).normalize()
+    v1 = p1.vel.dot(normal)
+    v2 = p2.vel.dot(normal)
+    if v1 < v2:
+        return None
+    e = p1.restitution * p2.restitution
+    m1, m2 = p1.mass, p2.mass
+    f1 = normal * (-(e + 1) * v1 + (e + 1) * v2) / (1/m1 + 1/m2) / dt
+    return f1
+
+
+class CollisionResolver:
+    def __init__(self, world, actor_list, target_condition=None, drawer=None):
+        self.is_alive = True
+        self.world = world
+        self.drawer = drawer or (lambda surface: None)
+
+        self.actor_list = actor_list
+        if target_condition is None:
+            self.target_condition = is_point_mass
+        else:
+            self.target_condition = target_condition
+
+    def update(self):
+        self.generate_force()
+
+    def draw(self, surface):
+        self.drawer(surface)
+
+
+    def generate_force(self):
+        plist = [a for a in self.actor_list if self.target_condition(a)]
+        n = len(plist)
+        for i in range(n):
+            for j in range(i + 1, n):
+                p1, p2 = plist[i], plist[j]
+                f1 = compute_impact_force_between_points(p1, p2, self.world.dt)
+                if f1 is None:
+                    continue
+                p1.receive_force(f1)
+                p2.receive_force(-f1)
+
+
+# Function to draw text
+# this is used by displaycollisions
+# later, call displaycollisions with argument drawer=TextDrawer
+
+class TextDrawer:
+    def __init__(self, screen):
+        self.screen = screen
+    def __call__(self, screen):
+        self.screen.blit(self.text_surf, (50,50))
+
+class DisplayCollisions(CollisionResolver):
+    def __init__(self, world, actor_list, target_condition=None, drawer=None):
+        super().__init__(world, actor_list, target_condition, drawer)
+        self.collisions = 0;
+        self.mainfont = pygame.font.Font(None, 50)
+
+    def generate_force(self):
+        super().generate_force()
+        self.collisions += 1
+    
+    def draw(self, surface):
+        surface = self.text_surf = self.mainfont.render(f"{self.collisions} total collisions", True, pygame.Color("Yellow"))
+        super().draw(surface)
+        

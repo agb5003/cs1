@@ -1,6 +1,6 @@
 import random
 import pygame
-import particle
+import ex6_2module as particle
 
 class AppMain:
     def __init__(self):

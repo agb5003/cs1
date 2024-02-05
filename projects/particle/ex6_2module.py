@@ -34,6 +34,7 @@ class BounceRandomize(BounceOnBoundaryStrategy):
     def __init__(self, restitution=0.95):
         self.restitution = restitution
         self.colors = ["pink", "red", "yellow", "orange", "purple"]
+
     def __call__(self, p):
         x, y = p.x, p.y
         vx, vy = p.vel.x, p.vel.y
@@ -42,14 +43,19 @@ class BounceRandomize(BounceOnBoundaryStrategy):
         e = self.restitution
         if (x < 0 + radius and vx < 0) or (x > width - radius and vx > 0):
             p.vel.x *= -e
-            p.color = "pink"
+            self.randomize(p)
         if y > height - radius and vy > 0:
             p.vel.y *= -e
             # constrain particle on or above the floor
             p.pos.y = height - radius
             if int(vy) != 0:
                 # Only change colors if the particle is not already on the floor sliding
-                p.color = self.colors[random.randint(0,len(self.colors)-1)]
+                self.randomize(p)
+                
+    def randomize(self, p):
+        self.other_colors = [color for color in self.colors if color != p.color]
+        p.color = random.choice(self.other_colors)
+        p.radius = random.randint(5, 20)
 
 class World:
     def __init__(self, width, height, dt, gy):
